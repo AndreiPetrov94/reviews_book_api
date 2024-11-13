@@ -3,9 +3,11 @@ from datetime import datetime
 from django.core.validators import MaxValueValidator, validate_slug
 from django.db import models
 
+from api.constants import CHAR_LENGTH, SLUG_LENGTH
+
 
 class Title(models.Model):
-    name = models.CharField(max_length=256)
+    name = models.CharField(max_length=CHAR_LENGTH)
     year = models.IntegerField(
         validators=[MaxValueValidator(datetime.now().year)]
     )
@@ -16,7 +18,7 @@ class Title(models.Model):
         on_delete=models.SET_NULL,
         null=True
     )
-    rating = models.IntegerField(default=0)
+    rating = models.IntegerField(read_only=True, default=None)
 
     class Meta:
         verbose_name = 'Произведение'
@@ -27,9 +29,9 @@ class Title(models.Model):
 
 
 class Genre(models.Model):
-    name = models.CharField(max_length=256)
+    name = models.CharField(max_length=CHAR_LENGTH)
     slug = models.SlugField(
-        unique=True, max_length=50, validators=[validate_slug]
+        unique=True, max_length=SLUG_LENGTH, validators=[validate_slug]
     )
 
     class Meta:
@@ -41,9 +43,9 @@ class Genre(models.Model):
 
 
 class Category(models.Model):
-    name = models.CharField(max_length=256)
+    name = models.CharField(max_length=CHAR_LENGTH)
     slug = models.SlugField(
-        unique=True, max_length=50, validators=[validate_slug]
+        unique=True, max_length=SLUG_LENGTH, validators=[validate_slug]
     )
 
     class Meta:

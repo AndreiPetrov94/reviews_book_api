@@ -14,6 +14,12 @@ class TitleSerializer(serializers.ModelSerializer):
         many=True
     )
 
+    def to_representation(self, instance):
+        repr = super().to_representation(instance)
+        repr['category'] = CategorySerializer(instance.category).data
+        repr['genre'] = GenreSerializer(instance.genre, many=True).data
+        return repr
+
     class Meta:
         model = Title
         fields = '__all__'
@@ -23,11 +29,11 @@ class CategorySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Category
-        fields = '__all__'
+        fields = ('name', 'slug')
 
 
 class GenreSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Genre
-        fields = '__all__'
+        fields = ('name', 'slug')

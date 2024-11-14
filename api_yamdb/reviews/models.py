@@ -18,7 +18,7 @@ class Title(models.Model):
         on_delete=models.SET_NULL,
         null=True
     )
-    rating = models.IntegerField(read_only=True, default=None)
+    rating = models.IntegerField(null=True, default=None)
 
     class Meta:
         verbose_name = 'Произведение'

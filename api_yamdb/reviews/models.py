@@ -1,42 +1,46 @@
 from datetime import datetime
 
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import AbstractUser
 from django.core.validators import (
     MaxValueValidator,
     MinValueValidator,
     validate_slug)
 from django.db import models
 
+from reviews.constants import MAX_LENGTH_CHARFIELD, MAX_LENGTH_SLUGFIELD
 
-User = get_user_model()   # пока нет кастомной модели User
 
-
-class Title(models.Model):
-    name = models.CharField(max_length=256)
-    year = models.IntegerField(
-        validators=[MaxValueValidator(datetime.now().year)]
+class User(AbstractUser):
+    ADMIN = 'admin'
+    MODERATOR = 'moderator'
+    USER = 'user'
+    ROLES = (
+        (ADMIN, "Admin"),
+        (MODERATOR, "Moderator"),
+        (USER, "User")
     )
-    description = models.TextField(blank=True)
-    genre = models.ManyToManyField('Genre')
-    category = models.ForeignKey(
-        'Category',
-        on_delete=models.SET_NULL,
-        null=True
-    )
-    rating = models.IntegerField(default=0)
 
-    class Meta:
-        verbose_name = 'Произведение'
-        verbose_name_plural = 'Произведения'
 
-    def __str__(self):
-        return self.name
+    @property
+    def is_admin(self):
+        return self.role == User.ADMIN or self.is_superuser
+
+    @property
+    def is_moderator(self):
+        return self.role == User.MODERATOR
+
+    @property
+    def is_user(self):
+        return self.role == User.USER
 
 
 class Genre(models.Model):
-    name = models.CharField(max_length=256)
+    name = models.CharField(max_length=MAX_LENGTH_CHARFIELD)
     slug = models.SlugField(
-        unique=True, max_length=50, validators=[validate_slug]
+        max_length=MAX_LENGTH_SLUGFIELD,
+        validators=[validate_slug],
+        unique=True
     )
 
     class Meta:
@@ -48,9 +52,11 @@ class Genre(models.Model):
 
 
 class Category(models.Model):
-    name = models.CharField(max_length=256)
+    name = models.CharField(max_length=MAX_LENGTH_CHARFIELD)
     slug = models.SlugField(
-        unique=True, max_length=50, validators=[validate_slug]
+        max_length=MAX_LENGTH_SLUGFIELD,
+        validators=[validate_slug],
+        unique=True
     )
 
     class Meta:
@@ -61,20 +67,48 @@ class Category(models.Model):
         return self.name
 
 
-# модели отзывов и комментов
-class Review(models.Model):
-    title = models.ForeignKey(
-        Title,
-        on_delete=models.CASCADE,
-        related_name='reviews'
+class Title(models.Model):
+    name = models.CharField(max_length=MAX_LENGTH_CHARFIELD)
+    year = models.IntegerField(
+        validators=[MaxValueValidator(datetime.now().year)]
     )
-    text = models.TextField()
+    description = models.TextField(
+        blank=True,
+        null=True
+    )
+    genre = models.ManyToManyField(Genre)
+    category = models.ForeignKey(
+        Category,
+        on_delete=models.SET_NULL,
+        related_name='titles',
+        null=True
+    )
+    rating = models.IntegerField(
+        null=True,
+        default=None
+    )
+
+    class Meta:
+        verbose_name = 'Произведение'
+        verbose_name_plural = 'Произведения'
+
+    def __str__(self):
+        return self.name
+
+
+class Review(models.Model):
+    text = models.TextField(max_length=MAX_LENGTH_CHARFIELD)
     author = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
         related_name='reviews'
     )
-    score = models.PositiveSmallIntegerField(
+    title = models.ForeignKey(
+        Title,
+        on_delete=models.CASCADE,
+        related_name='reviews'
+    )
+    score = models.IntegerField(
         validators=[
             MinValueValidator(1, 'Допустимы значения от 1 до 10'),
             MaxValueValidator(10, 'Допустимы значения от 1 до 10')
@@ -100,6 +134,7 @@ class Review(models.Model):
 
 
 class Comment(models.Model):
+    text = models.TextField(max_length=MAX_LENGTH_CHARFIELD)
     author = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
@@ -110,7 +145,6 @@ class Comment(models.Model):
         on_delete=models.CASCADE,
         related_name='comments'
     )
-    text = models.TextField()
     pub_date = models.DateTimeField(
         'Дата публикации',
         auto_now_add=True
@@ -119,6 +153,7 @@ class Comment(models.Model):
     class Meta:
         verbose_name = 'Комментарий'
         verbose_name_plural = 'Комментарии'
+        ordering = ['pub_date']
 
     def __str__(self):
         return self.text

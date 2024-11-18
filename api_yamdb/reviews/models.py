@@ -1,50 +1,69 @@
 from datetime import datetime
 
-# from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.tokens import default_token_generator
 from django.core.validators import (
     MaxValueValidator,
     MinValueValidator,
     validate_slug)
 from django.db import models
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
-from reviews.constants import MAX_LENGTH_CHARFIELD, MAX_LENGTH_SLUGFIELD
+from reviews.constants import (
+    MAX_LENGTH_EMAILFIELD,
+    MAX_LENGTH_CHARFIELD_EMAIL_NAME,
+    MAX_LENGTH_CHARFIELD,
+    MAX_LENGTH_SLUGFIELD
+)
+# from reviews.validators import validate_username
 
-# User = get_user_model()
 
 class User(AbstractUser):
     ADMIN = 'admin'
     MODERATOR = 'moderator'
     USER = 'user'
     ROLES = (
-        (ADMIN, "Admin"),
-        (MODERATOR, "Moderator"),
-        (USER, "User")
-    )
-
-    email = models.EmailField(
-        verbose_name='Адрес электронной почты',
-        unique=True,
+        (ADMIN, ADMIN),
+        (MODERATOR, MODERATOR),
+        (USER, USER)
     )
     username = models.CharField(
-        verbose_name='Имя пользователя',
-        max_length=150,
-        null=True,
+        # validators=(validate_username,),
+        max_length=MAX_LENGTH_CHARFIELD_EMAIL_NAME,
+        blank=False,
+        null=False,
         unique=True
     )
-    role = models.CharField(
-        verbose_name='Роль',
-        max_length=50,
-        choices=ROLES,
-        default=USER
+    email = models.EmailField(
+        max_length=MAX_LENGTH_EMAILFIELD,
+        blank=False,
+        null=False,
+        unique=True
     )
-    bio = models.TextField(
-        verbose_name='О себе',
-        null=True,
+    first_name = models.CharField(
+        max_length=MAX_LENGTH_CHARFIELD_EMAIL_NAME,
         blank=True
     )
-
-
+    last_name = models.CharField(
+        max_length=MAX_LENGTH_CHARFIELD_EMAIL_NAME,
+        blank=True
+    )
+    bio = models.TextField(
+        blank=True
+    )
+    role = models.CharField(
+        max_length=20,
+        choices=ROLES,
+        default=USER,
+        blank=True
+    )
+    confirmation_code = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        default='XXXX'
+    )
 
     @property
     def is_admin(self):
@@ -58,11 +77,7 @@ class User(AbstractUser):
     def is_user(self):
         return self.role == User.USER
 
-    USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = ['username']
-
     class Meta:
-        ordering = ['id']
         verbose_name = 'Пользователь'
         verbose_name_plural = 'Пользователи'
 
@@ -73,20 +88,18 @@ class User(AbstractUser):
             )
         ]
 
-class Genre(models.Model):
-    name = models.CharField(max_length=MAX_LENGTH_CHARFIELD)
-    slug = models.SlugField(
-        max_length=MAX_LENGTH_SLUGFIELD,
-        validators=[validate_slug],
-        unique=True
-    )
-
-    class Meta:
-        verbose_name = 'Жанр'
-        verbose_name_plural = 'Жанры'
-
     def __str__(self):
-        return self.name
+        return self.username
+
+
+@receiver(post_save, sender=User)
+def post_save(sender, instance, created, **kwargs):
+    if created:
+        confirmation_code = default_token_generator.make_token(
+            instance
+        )
+        instance.confirmation_code = confirmation_code
+        instance.save()
 
 
 class Category(models.Model):
@@ -105,6 +118,22 @@ class Category(models.Model):
         return self.name
 
 
+class Genre(models.Model):
+    name = models.CharField(max_length=MAX_LENGTH_CHARFIELD)
+    slug = models.SlugField(
+        max_length=MAX_LENGTH_SLUGFIELD,
+        validators=[validate_slug],
+        unique=True
+    )
+
+    class Meta:
+        verbose_name = 'Жанр'
+        verbose_name_plural = 'Жанры'
+
+    def __str__(self):
+        return self.name
+
+
 class Title(models.Model):
     name = models.CharField(max_length=MAX_LENGTH_CHARFIELD)
     year = models.IntegerField(
@@ -114,11 +143,15 @@ class Title(models.Model):
         blank=True,
         null=True
     )
-    genre = models.ManyToManyField(Genre)
+    genre = models.ManyToManyField(
+        Genre,
+        related_name='titles'
+    )
     category = models.ForeignKey(
         Category,
         on_delete=models.SET_NULL,
         related_name='titles',
+        blank=True,
         null=True
     )
     rating = models.IntegerField(

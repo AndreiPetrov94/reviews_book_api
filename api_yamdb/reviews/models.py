@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from django.contrib.auth import get_user_model
+# from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AbstractUser
 from django.core.validators import (
     MaxValueValidator,
@@ -10,6 +10,7 @@ from django.db import models
 
 from reviews.constants import MAX_LENGTH_CHARFIELD, MAX_LENGTH_SLUGFIELD
 
+# User = get_user_model()
 
 class User(AbstractUser):
     ADMIN = 'admin'
@@ -20,6 +21,29 @@ class User(AbstractUser):
         (MODERATOR, "Moderator"),
         (USER, "User")
     )
+
+    email = models.EmailField(
+        verbose_name='Адрес электронной почты',
+        unique=True,
+    )
+    username = models.CharField(
+        verbose_name='Имя пользователя',
+        max_length=150,
+        null=True,
+        unique=True
+    )
+    role = models.CharField(
+        verbose_name='Роль',
+        max_length=50,
+        choices=ROLES,
+        default=USER
+    )
+    bio = models.TextField(
+        verbose_name='О себе',
+        null=True,
+        blank=True
+    )
+
 
 
     @property
@@ -34,6 +58,20 @@ class User(AbstractUser):
     def is_user(self):
         return self.role == User.USER
 
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = ['username']
+
+    class Meta:
+        ordering = ['id']
+        verbose_name = 'Пользователь'
+        verbose_name_plural = 'Пользователи'
+
+        constraints = [
+            models.CheckConstraint(
+                check=~models.Q(username__iexact="me"),
+                name="username_is_not_me"
+            )
+        ]
 
 class Genre(models.Model):
     name = models.CharField(max_length=MAX_LENGTH_CHARFIELD)

@@ -16,7 +16,6 @@ from reviews.constants import (
     MAX_LENGTH_CHARFIELD,
     MAX_LENGTH_SLUGFIELD
 )
-# from reviews.validators import validate_username
 
 
 class User(AbstractUser):
@@ -29,7 +28,6 @@ class User(AbstractUser):
         (USER, USER)
     )
     username = models.CharField(
-        # validators=(validate_username,),
         max_length=MAX_LENGTH_CHARFIELD_EMAIL_NAME,
         blank=False,
         null=False,
@@ -154,10 +152,6 @@ class Title(models.Model):
         blank=True,
         null=True
     )
-    # rating = models.IntegerField(
-    #     null=True,
-    #     default=None
-    # )
 
     class Meta:
         verbose_name = 'Произведение'

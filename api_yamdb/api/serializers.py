@@ -18,32 +18,39 @@ from reviews.models import Comment, Category, Genre, Title, Review, User
 
 
 class UserSerializer(serializers.ModelSerializer):
-
     class Meta:
         model = User
-        fields = ['first_name', 'last_name', 'username',
-                  'bio', 'email', 'role']
+        fields = ['first_name', 'last_name',
+                  'username', 'bio', 'email', 'role']
 
 
-class UserCreationSerializer(serializers.Serializer):
+class BaseUserSerializer(serializers.Serializer):
+    username = serializers.CharField(required=True, max_length=150)
+
+    def validate_username(self, value):
+        if value.lower() == "me":
+            raise serializers.ValidationError(
+                'Имя пользователя не может быть "me"')
+        if not re.match(r'^[\w.@+-]+$', value):
+            raise serializers.ValidationError(
+                'Имя пользователя может содержать только буквы, цифры и символы @/./+/-/_')
+        return value
+
+
+class UserCreationSerializer(BaseUserSerializer):
     email = serializers.EmailField(required=True)
-    username = serializers.CharField(required=True)
 
     def validate(self, data):
-        username = data.get('username')
-
-        # Проверка на запрещенное имя "me"
-        if username and username.lower() == "me":
-            raise serializers.ValidationError(
-                {'username': _('Имя пользователя не может быть "me"')})
-
-        # Проверка на допустимые символы в username
-        if not re.match(r'^[\w.@+-]+$', username):
-            raise serializers.ValidationError({
-                'username': _('Имя пользователя может содержать только буквы, цифры и символы @/./+/-/_')
-            })
-
+        data = super().validate(data)
         return data
+
+
+class UserEditSerializer(BaseUserSerializer, serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['username', 'email', 'first_name',
+                  'last_name', 'bio', 'role']
+        read_only_fields = ('role',)
 
 
 class UserAccessTokenSerializer(serializers.Serializer):
@@ -52,47 +59,27 @@ class UserAccessTokenSerializer(serializers.Serializer):
 
     def validate(self, data):
         user = get_object_or_404(User, username=data['username'])
-        if not default_token_generator.check_token(user,
-                                                   data['confirmation_code']):
+        if not default_token_generator.check_token(user, data['confirmation_code']):
             raise serializers.ValidationError(
                 {'confirmation_code': 'Неверный код подтверждения'})
         return data
 
 
-class UserEditSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = User
-        fields = (
-            'username',
-            'email',
-            'first_name',
-            'last_name',
-            'bio',
-            'role'
-        )
-        read_only_fields = ('role')
-
-
 class SignupSerializer(serializers.ModelSerializer):
     username = serializers.CharField(
-        max_length=MAX_LENGTH_CHARFIELD_EMAIL_NAME,
-        required=True
-    )
+        max_length=MAX_LENGTH_CHARFIELD_EMAIL_NAME, required=True)
     email = serializers.EmailField(
-        max_length=MAX_LENGTH_EMAILFIELD,
-        required=True
-    )
+        max_length=MAX_LENGTH_EMAILFIELD, required=True)
 
     def validate_username(self, value):
         if value.lower() == "me":
             raise serializers.ValidationError(
-                'Имя пользователя не может быть "me"'
-            )
+                'Имя пользователя не может быть "me"')
         return value
 
     class Meta:
         model = User
-        fields = ('username', 'email')
+        fields = ['username', 'email']
 
 
 class TokenSerializer(serializers.Serializer):
@@ -122,12 +109,6 @@ class TitleReadSerializer(serializers.ModelSerializer):
     category = CategorySerializer(read_only=True)
     genre = GenreSerializer(many=True, read_only=True)
     rating = serializers.IntegerField(read_only=True)
-
-    # def to_representation(self, instance):
-    #     repr = super().to_representation(instance)
-    #     repr['category'] = CategorySerializer(instance.category).data
-    #     repr['genre'] = GenreSerializer(instance.genre, many=True).data
-    #     return repr
 
     class Meta:
         model = Title

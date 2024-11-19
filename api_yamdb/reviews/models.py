@@ -16,7 +16,7 @@ from reviews.constants import (
     MAX_LENGTH_CHARFIELD,
     MAX_LENGTH_SLUGFIELD
 )
-
+from reviews.validators import validate_username
 
 class User(AbstractUser):
     ADMIN = 'admin'
@@ -31,7 +31,8 @@ class User(AbstractUser):
         max_length=MAX_LENGTH_CHARFIELD_EMAIL_NAME,
         blank=False,
         null=False,
-        unique=True
+        unique=True,
+        validators=[validate_username, ]
     )
     email = models.EmailField(
         max_length=MAX_LENGTH_EMAILFIELD,

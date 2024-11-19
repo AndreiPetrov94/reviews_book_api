@@ -6,8 +6,6 @@ from django.shortcuts import get_object_or_404
 
 from rest_framework import serializers
 from django.core import validators
-# from rest_framework.exceptions import ValidationError
-# from rest_framework.generics import get_object_or_404
 from rest_framework.validators import UniqueValidator
 
 from reviews.constants import (
@@ -31,7 +29,7 @@ class BaseUserSerializer(serializers.Serializer):
         if value.lower() == "me":
             raise serializers.ValidationError(
                 'Имя пользователя не может быть "me"')
-        if not re.match(r'^[\w.@+-]+$', value):
+        if not re.match(r'^[\w.@+-]+\Z', value):
             raise serializers.ValidationError(
                 'Имя пользователя может содержать только буквы, цифры и символы @/./+/-/_')
         return value
@@ -75,6 +73,9 @@ class SignupSerializer(serializers.ModelSerializer):
         if value.lower() == "me":
             raise serializers.ValidationError(
                 'Имя пользователя не может быть "me"')
+        if not re.match(r'^[\w.@+-]+\Z', value):
+            raise serializers.ValidationError(
+                'Имя пользователя может содержать только буквы, цифры и символы @/./+/-/_')
         return value
 
     class Meta:

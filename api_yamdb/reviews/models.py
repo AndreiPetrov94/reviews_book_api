@@ -6,9 +6,6 @@ from django.core.validators import (
     MaxValueValidator,
     MinValueValidator,
     validate_slug)
-from datetime import datetime
-
-from django.core.validators import MaxValueValidator, validate_slug
 from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
@@ -156,10 +153,6 @@ class Title(models.Model):
         related_name='titles',
         blank=True,
         null=True
-    )
-    rating = models.IntegerField(
-        null=True,
-        default=None
     )
 
     class Meta:

@@ -1,20 +1,23 @@
+from django.conf import settings
 from django.db.models import Avg
 from django.shortcuts import get_object_or_404
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters, permissions, status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.pagination import PageNumberPagination, LimitOffsetPagination
-from rest_framework.permissions import SAFE_METHODS
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import AccessToken
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
-from .permissions import (AdminModeratorAuthorPermission, AdminOnly,
+from .permissions import (AdminModeratorAuthorPermission, AdminOnly, IsAdmin,
                           IsAdminUserOrReadOnly)
-from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
+from rest_framework.permissions import AllowAny, IsAuthenticated, IsAuthenticatedOrReadOnly
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.core.mail import EmailMessage
+from rest_framework.permissions import SAFE_METHODS
+
+from api.filters import TitleFilter
 
 from api.filters import TitleFilter
 from api.mixins import ListCreateDestroyViewSet
@@ -26,6 +29,8 @@ from api.serializers import (
     TitleReadSerializer,
     ReviewSerializer,
     UserSerializer,
+    UserCreationSerializer,
+    UserAccessTokenSerializer,
     TokenSerializer,
     SignupSerializer,
     UserEditSerializer
@@ -116,35 +121,63 @@ class ReviewViewSet(viewsets.ModelViewSet):
 
 
 class UserViewSet(viewsets.ModelViewSet):
-    queryset = User.objects.all()
     serializer_class = UserSerializer
-    permission_class = (IsAuthenticated, AdminOnly,)
+    queryset = User.objects.all()
+    permission_classes = [IsAdmin]
     lookup_field = 'username'
-    # filter_backends = (SearchFilter, )
-    # search_fields = ('username', )
 
-    @action(
-        methods=['GET', 'PATCH'],
-        detail=False,
-        permission_classes=(IsAuthenticated,),
-        url_path='me')
-    def get_current_user_info(self, request):
-        serializer = UserSerializer(request.user)
-        if request.method == 'PATCH':
-            if request.user.is_admin:
-                serializer = UserSerializer(
-                    request.user,
-                    data=request.data,
-                    partial=True)
-            else:
-                serializer = UserEditSerializer(
-                    request.user,
-                    data=request.data,
-                    partial=True)
-            serializer.is_valid(raise_exception=True)
-            serializer.save()
+    @action(methods=['patch', 'get'], detail=False,
+            permission_classes=[permissions.IsAuthenticated])
+    def me(self, request):
+        if request.method == 'GET':
+            serializer = UserSerializer(self.request.user)
             return Response(serializer.data, status=status.HTTP_200_OK)
-        return Response(serializer.data)
+        serializer = UserSerializer(self.request.user,
+                                    data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(role=request.user.role, partial=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def signup(request):
+    serializer = UserCreationSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    email = serializer.validated_data['email']
+    username = serializer.validated_data['username']
+    if (
+        User.objects.filter(email=email).exists()
+        or User.objects.filter(username=username).exists()
+    ):
+        return Response(status=status.HTTP_400_BAD_REQUEST)
+    user, code_created = User.objects.get_or_create(
+        email=email, username=username)
+    confirmation_code = default_token_generator.make_token(user)
+    user.confirmation_code = confirmation_code
+    user.save()
+    send_mail(
+        'Confirmation code',
+        f'Your code {confirmation_code}',
+        settings.DEFAULT_FROM_EMAIL,
+        [email],
+        fail_silently=False
+    )
+    return Response(
+        serializer.data,
+        status=status.HTTP_200_OK
+    )
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def get_jwt_token(request):
+    serializer = UserAccessTokenSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    username = serializer.validated_data['username']
+    user = get_object_or_404(User, username=username)
+    token = AccessToken.for_user(user)
+    return Response({'token': str(token)}, status=status.HTTP_200_OK)
 
 
 class APIGetToken(APIView):

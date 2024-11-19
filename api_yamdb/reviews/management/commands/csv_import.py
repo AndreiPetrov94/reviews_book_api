@@ -8,7 +8,7 @@ from reviews.models import Category, Comment, Genre, Title, Review, User
 
 class Command(BaseCommand):
 
-    def handle(self, *args, **kwargs):
+    def handle(self, *args, **options):
         path = Path('./static/data')
         for file in path.iterdir():
             with open(file, encoding='utf-8') as f:

@@ -15,9 +15,6 @@ from rest_framework.permissions import AllowAny, IsAuthenticated, IsAuthenticate
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.core.mail import EmailMessage
-from rest_framework.permissions import SAFE_METHODS
-
-from api.filters import TitleFilter
 
 from api.filters import TitleFilter
 from api.mixins import ListCreateDestroyViewSet
@@ -40,20 +37,11 @@ from reviews.models import Category, Genre, Title, Review, User
 
 class TitleViewSet(viewsets.ModelViewSet):
     queryset = Title.objects.annotate(rating=Avg('reviews__score'))
-    permission_classess = (IsAuthenticatedOrReadOnly,)
+    permission_classes = (IsAdminUserOrReadOnly,)
     pagination_class = PageNumberPagination
     filter_backends = (DjangoFilterBackend,)
     filterset_class = TitleFilter
     http_method_names = ['get', 'post', 'patch', 'delete']
-
-    def perform_create(self, serializer):
-        serializer.save()
-
-    def perform_update(self, serializer):
-        serializer.save()
-
-    def perform_destroy(self, instance):
-        instance.delete()
 
     def get_serializer_class(self):
         if self.action in ('list', 'retrieve'):
@@ -64,7 +52,7 @@ class TitleViewSet(viewsets.ModelViewSet):
 class GenreViewSet(ListCreateDestroyViewSet):
     queryset = Genre.objects.all()
     serializer_class = GenreSerializer
-    permission_classess = (IsAdminUserOrReadOnly,)
+    permission_classes = (IsAdminUserOrReadOnly,)
     pagination_class = PageNumberPagination
     filter_backends = (filters.SearchFilter,)
     search_fields = ('name',)
@@ -74,7 +62,7 @@ class GenreViewSet(ListCreateDestroyViewSet):
 class CategoryViewSet(ListCreateDestroyViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
-    permission_classess = (IsAdminUserOrReadOnly,)
+    permission_classes = (IsAdminUserOrReadOnly,)
     pagination_class = PageNumberPagination
     filter_backends = (filters.SearchFilter,)
     search_fields = ('name',)

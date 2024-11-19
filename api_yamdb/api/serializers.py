@@ -1,3 +1,9 @@
+from django.utils.translation import gettext_lazy as _
+import re
+
+from django.contrib.auth.tokens import default_token_generator
+from django.shortcuts import get_object_or_404
+
 from rest_framework import serializers
 from django.core import validators
 # from rest_framework.exceptions import ValidationError
@@ -12,55 +18,45 @@ from reviews.models import Comment, Category, Genre, Title, Review, User
 
 
 class UserSerializer(serializers.ModelSerializer):
-    username = serializers.SlugField(
-        max_length=MAX_LENGTH_CHARFIELD_EMAIL_NAME,
-        validators=(
-            validators.MaxLengthValidator(MAX_LENGTH_CHARFIELD_EMAIL_NAME),
-            validators.RegexValidator(r'^[\w.@+-]+\Z')
-        )
-    )
-    email = serializers.EmailField(
-        max_length=MAX_LENGTH_EMAILFIELD,
-        validators=(validators.MaxLengthValidator(MAX_LENGTH_EMAILFIELD),)
-    )
-
-    def validate(self, attrs):
-        if User.objects.filter(email=attrs.get('email')).exists():
-            user = User.objects.get(email=attrs.get('email'))
-            if user.username != attrs.get('username'):
-                raise serializers.ValidationError(
-                    'Электронная почта уже использована'
-                )
-        if User.objects.filter(username=attrs.get('username')).exists():
-            user = User.objects.get(username=attrs.get('username'))
-            if user.email != attrs.get('email'):
-                raise serializers.ValidationError(
-                    'Имя пользователя уже использовано'
-                )
-        return super().validate(attrs)
-
-    def validate_username(self, value):
-        if value == "me":
-            raise serializers.ValidationError(
-                'Имя пользователя не может быть "me"'
-            )
-        return value
 
     class Meta:
         model = User
-        fields = (
-            'username',
-            'email',
-            'first_name',
-            'last_name',
-            'bio',
-            'role'
-        )
-        lookup_field = 'username'
-        extra_kwargs = {
-            'username': {'required': True},
-            'email': {'required': True},
-        }
+        fields = ['first_name', 'last_name', 'username',
+                  'bio', 'email', 'role']
+
+
+class UserCreationSerializer(serializers.Serializer):
+    email = serializers.EmailField(required=True)
+    username = serializers.CharField(required=True)
+
+    def validate(self, data):
+        username = data.get('username')
+
+        # Проверка на запрещенное имя "me"
+        if username and username.lower() == "me":
+            raise serializers.ValidationError(
+                {'username': _('Имя пользователя не может быть "me"')})
+
+        # Проверка на допустимые символы в username
+        if not re.match(r'^[\w.@+-]+$', username):
+            raise serializers.ValidationError({
+                'username': _('Имя пользователя может содержать только буквы, цифры и символы @/./+/-/_')
+            })
+
+        return data
+
+
+class UserAccessTokenSerializer(serializers.Serializer):
+    username = serializers.CharField(required=True)
+    confirmation_code = serializers.CharField(required=True)
+
+    def validate(self, data):
+        user = get_object_or_404(User, username=data['username'])
+        if not default_token_generator.check_token(user,
+                                                   data['confirmation_code']):
+            raise serializers.ValidationError(
+                {'confirmation_code': 'Неверный код подтверждения'})
+        return data
 
 
 class UserEditSerializer(serializers.ModelSerializer):

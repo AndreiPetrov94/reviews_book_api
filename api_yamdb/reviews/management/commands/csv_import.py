@@ -26,5 +26,4 @@ class Command(BaseCommand):
                         Review.objects.create(**row)
                     elif file.name == 'comments.csv':
                         Comment.objects.create(**row)
-
         self.stdout.write(self.style.SUCCESS('Данные импортированы'))

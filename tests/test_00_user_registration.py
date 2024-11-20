@@ -286,92 +286,92 @@ class Test00UserRegistration:
             'должен вернуться ответ со статусом 400.'
         )
 
-    # def test_00_registration_same_email_restricted(self, client):
-    #     valid_email_1 = 'test_duplicate_1@yamdb.fake'
-    #     valid_email_2 = 'test_duplicate_2@yamdb.fake'
-    #     valid_username_1 = 'valid_username_1'
-    #     valid_username_2 = 'valid_username_2'
+    def test_00_registration_same_email_restricted(self, client):
+        valid_email_1 = 'test_duplicate_1@yamdb.fake'
+        valid_email_2 = 'test_duplicate_2@yamdb.fake'
+        valid_username_1 = 'valid_username_1'
+        valid_username_2 = 'valid_username_2'
 
-    #     valid_data = {
-    #         'email': valid_email_1,
-    #         'username': valid_username_1
-    #     }
-    #     response = client.post(self.URL_SIGNUP, data=valid_data)
-    #     assert response.status_code == HTTPStatus.OK, (
-    #         f'Проверьте, что POST-запрос к `{self.URL_SIGNUP}` с корректными '
-    #         'возвращает статус-код 200.'
-    #     )
+        valid_data = {
+            'email': valid_email_1,
+            'username': valid_username_1
+        }
+        response = client.post(self.URL_SIGNUP, data=valid_data)
+        assert response.status_code == HTTPStatus.OK, (
+            f'Проверьте, что POST-запрос к `{self.URL_SIGNUP}` с корректными '
+            'возвращает статус-код 200.'
+        )
 
-    #     duplicate_email_data = {
-    #         'email': valid_email_1,
-    #         'username': valid_username_2
-    #     }
-    #     assert_msg = (
-    #         f'Если POST-запрос, отправленный на эндпоинт `{self.URL_SIGNUP}`, '
-    #         'содержит `email` зарегистрированного пользователя и незанятый '
-    #         '`username` - должен вернуться ответ со статусом 400.'
-    #     )
-    #     try:
-    #         response = client.post(self.URL_SIGNUP, data=duplicate_email_data)
-    #     except IntegrityError:
-    #         raise AssertionError(assert_msg)
-    #     assert response.status_code == HTTPStatus.BAD_REQUEST, (assert_msg)
+        duplicate_email_data = {
+            'email': valid_email_1,
+            'username': valid_username_2
+        }
+        assert_msg = (
+            f'Если POST-запрос, отправленный на эндпоинт `{self.URL_SIGNUP}`, '
+            'содержит `email` зарегистрированного пользователя и незанятый '
+            '`username` - должен вернуться ответ со статусом 400.'
+        )
+        try:
+            response = client.post(self.URL_SIGNUP, data=duplicate_email_data)
+        except IntegrityError:
+            raise AssertionError(assert_msg)
+        assert response.status_code == HTTPStatus.BAD_REQUEST, (assert_msg)
 
-    #     duplicate_username_data = {
-    #         'email': valid_email_2,
-    #         'username': valid_username_1
-    #     }
-    #     assert_msg = (
-    #         f'Если POST-запрос, отправленный на эндпоинт `{self.URL_SIGNUP}`, '
-    #         'содержит `username` зарегистрированного пользователя и '
-    #         'несоответствующий ему `email` - должен вернуться ответ со '
-    #         'статусом 400.'
-    #     )
-    #     try:
-    #         response = client.post(
-    #             self.URL_SIGNUP, data=duplicate_username_data
-    #         )
-    #     except IntegrityError:
-    #         raise AssertionError(assert_msg)
-    #     assert response.status_code == HTTPStatus.BAD_REQUEST, (assert_msg)
+        duplicate_username_data = {
+            'email': valid_email_2,
+            'username': valid_username_1
+        }
+        assert_msg = (
+            f'Если POST-запрос, отправленный на эндпоинт `{self.URL_SIGNUP}`, '
+            'содержит `username` зарегистрированного пользователя и '
+            'несоответствующий ему `email` - должен вернуться ответ со '
+            'статусом 400.'
+        )
+        try:
+            response = client.post(
+                self.URL_SIGNUP, data=duplicate_username_data
+            )
+        except IntegrityError:
+            raise AssertionError(assert_msg)
+        assert response.status_code == HTTPStatus.BAD_REQUEST, (assert_msg)
 
-    # def test_get_new_confirmation_code_for_existing_user(self, client):
-    #     valid_data = {
-    #         'email': 'test_email@yamdb.fake',
-    #         'username': 'valid_username_1'
-    #     }
-    #     response = client.post(self.URL_SIGNUP, data=valid_data)
-    #     assert response.status_code == HTTPStatus.OK, (
-    #         'Проверьте, что POST-запрос с корректными данными, отправленный '
-    #         f'на эндпоинт `{self.URL_SIGNUP}`, возвращает ответ со статусом '
-    #         '200.'
-    #     )
+    def test_get_new_confirmation_code_for_existing_user(self, client):
+        valid_data = {
+            'email': 'test_email@yamdb.fake',
+            'username': 'valid_username_1'
+        }
+        response = client.post(self.URL_SIGNUP, data=valid_data)
+        assert response.status_code == HTTPStatus.OK, (
+            'Проверьте, что POST-запрос с корректными данными, отправленный '
+            f'на эндпоинт `{self.URL_SIGNUP}`, возвращает ответ со статусом '
+            '200.'
+        )
 
-    #     response = client.post(self.URL_SIGNUP, data=valid_data)
-    #     assert response.status_code == HTTPStatus.OK, (
-    #         f'Проверьте, что повторный POST-запрос к `{self.URL_SIGNUP}` с '
-    #         'данными зарегистрированного пользователя возвращает ответ со '
-    #         'статусом 200.'
-    #     )
+        response = client.post(self.URL_SIGNUP, data=valid_data)
+        assert response.status_code == HTTPStatus.OK, (
+            f'Проверьте, что повторный POST-запрос к `{self.URL_SIGNUP}` с '
+            'данными зарегистрированного пользователя возвращает ответ со '
+            'статусом 200.'
+        )
 
-    # def test_get_confirmation_code_for_user_created_by_admin(
-    #         self, admin_client, client, django_user_model
-    # ):
-    #     user_cnt = django_user_model.objects.count()
-    #     valid_data = {
-    #         'email': 'test_email@yamdb.fake',
-    #         'username': 'valid_username_1'
-    #     }
-    #     admin_client.post(self.URL_ADMIN_CREATE_USER, data=valid_data)
-    #     assert (user_cnt + 1) == django_user_model.objects.count(), (
-    #         'Если POST-запрос администратора на эндпоинт '
-    #         f'`{self.URL_ADMIN_CREATE_USER}` содержит корректные данные - '
-    #         'должен быть создан новый пользователь.'
-    #     )
+    def test_get_confirmation_code_for_user_created_by_admin(
+            self, admin_client, client, django_user_model
+    ):
+        user_cnt = django_user_model.objects.count()
+        valid_data = {
+            'email': 'test_email@yamdb.fake',
+            'username': 'valid_username_1'
+        }
+        admin_client.post(self.URL_ADMIN_CREATE_USER, data=valid_data)
+        assert (user_cnt + 1) == django_user_model.objects.count(), (
+            'Если POST-запрос администратора на эндпоинт '
+            f'`{self.URL_ADMIN_CREATE_USER}` содержит корректные данные - '
+            'должен быть создан новый пользователь.'
+        )
 
-    #     response = client.post(self.URL_SIGNUP, data=valid_data)
-    #     assert response.status_code == HTTPStatus.OK, (
-    #         f'Проверьте, что POST-запрос к {self.URL_SIGNUP} с данными '
-    #         'пользователя, созданного администратором,  возвращает ответ '
-    #         'со статусом 200.'
-    #     )
+        response = client.post(self.URL_SIGNUP, data=valid_data)
+        assert response.status_code == HTTPStatus.OK, (
+            f'Проверьте, что POST-запрос к {self.URL_SIGNUP} с данными '
+            'пользователя, созданного администратором,  возвращает ответ '
+            'со статусом 200.'
+        )

@@ -1,5 +1,3 @@
-import re
-
 from django.contrib.auth.tokens import default_token_generator
 from django.utils.translation import gettext_lazy as _
 from django.shortcuts import get_object_or_404
@@ -12,6 +10,7 @@ from reviews.constants import (
     MAX_VALUE_SCORE
 )
 from reviews.models import Comment, Category, Genre, Title, Review, User
+from reviews.validators import validation_username
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -35,10 +34,7 @@ class BaseUserSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 'Никнейм не может быть "me"'
             )
-        if not re.match(r'^[\w.@+-]+\Z', value):
-            raise serializers.ValidationError(
-                'Недопустимые символы в никнейме'
-            )
+        validation_username(value)
         return value
 
 

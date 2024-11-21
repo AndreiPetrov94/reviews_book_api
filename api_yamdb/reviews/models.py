@@ -21,7 +21,7 @@ from reviews.constants import (
     MIN_VALUE_SCORE,
     MAX_VALUE_SCORE
 )
-from reviews.validators import validate_username
+from reviews.validators import validation_username
 
 
 class User(AbstractUser):
@@ -39,7 +39,7 @@ class User(AbstractUser):
         blank=False,
         null=False,
         unique=True,
-        validators=(validate_username,)
+        validators=(validation_username,)
     )
     email = models.EmailField(
         verbose_name='Электронная почта',

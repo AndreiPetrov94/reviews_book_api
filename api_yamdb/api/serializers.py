@@ -1,24 +1,18 @@
-import re
-
+from django.conf import settings
 from django.contrib.auth.tokens import default_token_generator
+from django.core.mail import send_mail
 from django.shortcuts import get_object_or_404
 from rest_framework import serializers
+from rest_framework_simplejwt.tokens import RefreshToken
 
 from reviews.constants import (
     MAX_LENGTH_EMAILFIELD,
-    MAX_LENGTH_CHARFIELD_NAME
+    MAX_LENGTH_CHARFIELD_NAME,
+    MIN_VALUE_SCORE,
+    MAX_VALUE_SCORE
 )
 from reviews.models import Comment, Category, Genre, Title, Review, User
-
-
-class UserSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = User
-        fields = (
-            'first_name', 'last_name',
-            'username', 'bio',
-            'email', 'role'
-        )
+from reviews.validators import validation_username
 
 
 class BaseUserSerializer(serializers.Serializer):
@@ -28,15 +22,23 @@ class BaseUserSerializer(serializers.Serializer):
     )
 
     def validate_username(self, value):
-        if value.lower() == "me":
+        if value.lower() == 'me':
             raise serializers.ValidationError(
                 'Никнейм не может быть "me"'
             )
-        if not re.match(r'^[\w.@+-]+\Z', value):
-            raise serializers.ValidationError(
-                'Недопустимые символы в никнейме'
-            )
+        validation_username(value)
         return value
+
+
+class UserSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = User
+        fields = (
+            'first_name', 'last_name',
+            'username', 'bio',
+            'email', 'role'
+        )
 
 
 class UserCreationSerializer(BaseUserSerializer):
@@ -45,9 +47,38 @@ class UserCreationSerializer(BaseUserSerializer):
         required=True
     )
 
-    def validate(self, data):
-        data = super().validate(data)
-        return data
+    def validate(self, attrs):
+        user_by_email = User.objects.filter(email=attrs.get('email')).first()
+        user_by_username = User.objects.filter(
+            username=attrs.get('username')
+        ).first()
+
+        if user_by_email and user_by_email.username != attrs.get('username'):
+            raise serializers.ValidationError(
+                {'email': 'Электронная почта уже используется'}
+            )
+
+        if user_by_username and user_by_username.email != attrs.get('email'):
+            raise serializers.ValidationError(
+                {'username': 'Никнейм уже используется'}
+            )
+        return super().validate(attrs)
+
+    def create(self, validated_data):
+        user = User.objects.create(
+            email=validated_data['email'],
+            username=validated_data['username']
+        )
+        confirmation_code = user.generate_confirmation_code()
+        user.confirmation_code = confirmation_code
+        user.save()
+        send_mail(
+            f'Ваш код подтверждения {confirmation_code}',
+            settings.DEFAULT_FROM_EMAIL,
+            [validated_data['email']],
+            fail_silently=False
+        )
+        return user
 
 
 class UserEditSerializer(BaseUserSerializer, serializers.ModelSerializer):
@@ -81,39 +112,66 @@ class UserAccessTokenSerializer(serializers.Serializer):
         return data
 
 
-class SignupSerializer(BaseUserSerializer, serializers.ModelSerializer):
+class SignupSerializer(BaseUserSerializer):
     email = serializers.EmailField(
         max_length=MAX_LENGTH_EMAILFIELD,
         required=True
     )
 
-    def validate(self, attrs):
-        if User.objects.filter(email=attrs.get('email')).exists():
-            user = User.objects.get(email=attrs.get('email'))
-            if user.username != attrs.get('username'):
-                raise serializers.ValidationError(
-                    {'Электронная почта уже используется'}
-                )
-        if User.objects.filter(username=attrs.get('username')).exists():
-            user = User.objects.get(username=attrs.get('username'))
-            if user.email != attrs.get('email'):
-                raise serializers.ValidationError(
-                    {'Никнейм уже используется'}
-                )
-        return super().validate(attrs)
+    def validate(self, data):
+        email = data.get('email')
+        username = data.get('username')
+        if User.objects.filter(email=email).exclude(
+            username=username
+        ).exists():
+            raise serializers.ValidationError(
+                {'email': 'Электронная почта уже используется'}
+            )
+        if User.objects.filter(username=username).exclude(
+            email=email
+        ).exists():
+            raise serializers.ValidationError(
+                {'username': 'Никнейм уже используется'}
+            )
+        return data
 
-    class Meta:
-        model = User
-        fields = ('username', 'email')
+    def create(self, validated_data):
+        user, created = User.objects.get_or_create(
+            username=validated_data['username'],
+            email=validated_data['email']
+        )
+        confirmation_code = default_token_generator.make_token(user)
+        user.confirmation_code = confirmation_code
+        user.save()
+        email_body = (
+            f'Доброго времени суток, {user.username}. '
+            f'Код подтверждения для доступа к API: {confirmation_code}'
+        )
+        send_mail(
+            subject='Код подтверждения для доступа к API!',
+            message=email_body,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[user.email],
+            fail_silently=False,
+        )
+        return user
 
 
 class TokenSerializer(serializers.Serializer):
     username = serializers.CharField(required=True)
     confirmation_code = serializers.CharField(required=True)
+    token = serializers.CharField(read_only=True)
 
-    class Meta:
-        model = User
-        fields = ('username', 'confirmation_code')
+    def validate(self, data):
+        username = data.get('username')
+        confirmation_code = data.get('confirmation_code')
+        user = get_object_or_404(User, username=username)
+        if not default_token_generator.check_token(user, confirmation_code):
+            raise serializers.ValidationError(
+                {'confirmation_code': 'Неверный код подтверждения'}
+            )
+        data['token'] = str(RefreshToken.for_user(user).access_token)
+        return data
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -185,7 +243,7 @@ class ReviewSerializer(serializers.ModelSerializer):
         return data
 
     def validate_score(self, value):
-        if 0 > value > 10:
+        if MIN_VALUE_SCORE > value > MAX_VALUE_SCORE:
             raise serializers.ValidationError(
                 'Оценка по 10-бальной шкале!'
             )

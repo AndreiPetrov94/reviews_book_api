@@ -7,7 +7,9 @@ from rest_framework import serializers
 
 from reviews.constants import (
     MAX_LENGTH_EMAILFIELD,
-    MAX_LENGTH_CHARFIELD_NAME
+    MAX_LENGTH_CHARFIELD_NAME,
+    MIN_VALUE_SCORE,
+    MAX_VALUE_SCORE
 )
 from reviews.models import Comment, Category, Genre, Title, Review, User
 
@@ -29,7 +31,7 @@ class BaseUserSerializer(serializers.Serializer):
     )
 
     def validate_username(self, value):
-        if value.lower() == "me":
+        if value.lower() == 'me':
             raise serializers.ValidationError(
                 'Никнейм не может быть "me"'
             )
@@ -82,7 +84,7 @@ class UserAccessTokenSerializer(serializers.Serializer):
         return data
 
 
-class SignupSerializer(BaseUserSerializer, serializers.ModelSerializer):
+class SignupSerializer(BaseUserSerializer):
     email = serializers.EmailField(
         max_length=MAX_LENGTH_EMAILFIELD,
         required=True
@@ -186,7 +188,7 @@ class ReviewSerializer(serializers.ModelSerializer):
         return data
 
     def validate_score(self, value):
-        if 0 > value > 10:
+        if MIN_VALUE_SCORE > value > MAX_VALUE_SCORE:
             raise serializers.ValidationError(
                 'Оценка по 10-бальной шкале!'
             )

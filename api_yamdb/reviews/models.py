@@ -17,7 +17,9 @@ from reviews.constants import (
     MAX_LENGTH_TEXTFIELD,
     MAX_LENGTH_CHARFIELD_CODE,
     MAX_LENGTH_CHARFIELD_NAME,
-    MAX_LENGTH_CHARFIELD_ROLE
+    MAX_LENGTH_CHARFIELD_ROLE,
+    MIN_VALUE_SCORE,
+    MAX_VALUE_SCORE
 )
 from reviews.validators import validate_username
 
@@ -95,8 +97,8 @@ class User(AbstractUser):
 
         constraints = [
             models.CheckConstraint(
-                check=~models.Q(username__iexact="me"),
-                name="username_is_not_me"
+                check=~models.Q(username__iexact='me'),
+                name='username_is_not_me'
             )
         ]
 
@@ -137,7 +139,7 @@ class Category(models.Model):
 
 class Genre(models.Model):
     name = models.CharField(
-        verbose_name='нНазвание жанра',
+        verbose_name='Название жанра',
         max_length=MAX_LENGTH_CHARFIELD
     )
     slug = models.SlugField(
@@ -213,8 +215,8 @@ class Review(models.Model):
     score = models.IntegerField(
         verbose_name='Рейтинг',
         validators=[
-            MinValueValidator(1, 'Минимальное значение 1'),
-            MaxValueValidator(10, 'Максимальное значение значение 10')
+            MinValueValidator(MIN_VALUE_SCORE, 'Оценка по 10-бальной шкале!'),
+            MaxValueValidator(MAX_VALUE_SCORE, 'Оценка по 10-бальной шкале!')
         ]
     )
     pub_date = models.DateTimeField(

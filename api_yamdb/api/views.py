@@ -180,23 +180,23 @@ def signup(request):
     return Response(serializer.data, status=status.HTTP_200_OK)
 
 
-@api_view(['POST'])
-@permission_classes([AllowAny])
-def get_jwt_token(request):
-    serializer = UserAccessTokenSerializer(data=request.data)
-    serializer.is_valid(raise_exception=True)
-    username = serializer.validated_data['username']
-    user = get_object_or_404(User, username=username)
+# @api_view(['POST'])
+# @permission_classes([AllowAny])
+# def get_jwt_token(request):
+#     serializer = UserAccessTokenSerializer(data=request.data)
+#     serializer.is_valid(raise_exception=True)
+#     username = serializer.validated_data['username']
+#     user = get_object_or_404(User, username=username)
 
-    if user.confirmation_code != serializer.validated_data[
-        'confirmation_code'
-    ]:
-        return Response(
-            {'Неверный код подтверждения'},
-            status=status.HTTP_400_BAD_REQUEST
-        )
-    token = AccessToken.for_user(user)
-    return Response({'token': str(token)}, status=status.HTTP_201_CREATED)
+#     if user.confirmation_code != serializer.validated_data[
+#         'confirmation_code'
+#     ]:
+#         return Response(
+#             {'Неверный код подтверждения'},
+#             status=status.HTTP_400_BAD_REQUEST
+#         )
+#     token = AccessToken.for_user(user)
+#     return Response({'token': str(token)}, status=status.HTTP_201_CREATED)
 
 
 class APIGetToken(APIView):

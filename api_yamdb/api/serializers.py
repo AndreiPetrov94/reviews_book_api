@@ -1,7 +1,9 @@
 from django.contrib.auth.tokens import default_token_generator
 from django.utils.translation import gettext_lazy as _
 from django.shortcuts import get_object_or_404
-from rest_framework import serializers
+from rest_framework import serializers, status
+from rest_framework.response import Response
+from rest_framework_simplejwt.tokens import AccessToken
 
 from reviews.constants import (
     MAX_LENGTH_EMAILFIELD,
@@ -66,18 +68,19 @@ class UserAccessTokenSerializer(serializers.Serializer):
     confirmation_code = serializers.CharField(required=True)
 
     def validate(self, data):
+        username = data.get('username')
+        confirmation_code = data.get('confirmation_code')
         user = get_object_or_404(
             User,
-            username=data['username']
+            username=username
         )
-        if not default_token_generator.check_token(
-            user,
-            data['confirmation_code']
-        ):
-            raise serializers.ValidationError(
-                {'Неверный код подтверждения'}
+        if user.confirmation_code != confirmation_code:
+            return Response(
+                {'Неверный код подтверждения'},
+                status=status.HTTP_400_BAD_REQUEST
             )
-        return data
+        token = AccessToken.for_user(user)
+        return Response({'token': str(token)}, status=status.HTTP_201_CREATED)
 
 
 class SignupSerializer(BaseUserSerializer):
@@ -87,19 +90,30 @@ class SignupSerializer(BaseUserSerializer):
     )
 
     def validate(self, attrs):
-        if User.objects.filter(email=attrs.get('email')).exists():
-            user = User.objects.get(email=attrs.get('email'))
-            if user.username != attrs.get('username'):
-                raise serializers.ValidationError(
-                    {'Электронная почта уже используется'}
-                )
-        if User.objects.filter(username=attrs.get('username')).exists():
-            user = User.objects.get(username=attrs.get('username'))
-            if user.email != attrs.get('email'):
-                raise serializers.ValidationError(
-                    {'Никнейм уже используется'}
-                )
-        return super().validate(attrs)
+        email = attrs.get('email')
+        username = attrs.get('username')
+
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            user = None
+
+        if user is not None and user.username != username:
+            raise serializers.ValidationError(
+                {'email': 'Электронная почта уже используется'}
+            )
+
+        try:
+            user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            user = None
+
+        if user is not None and user.email != email:
+            raise serializers.ValidationError(
+                {'username': 'Никнейм уже используется'}
+            )
+
+        return attrs
 
     class Meta:
         model = User

@@ -87,7 +87,6 @@ class CommentViewSet(viewsets.ModelViewSet):
         review = get_object_or_404(
             Review,
             id=self.kwargs.get('review_id'),
-            title=self.kwargs.get('title_id')
         )
         serializer.save(author=self.request.user, review=review)
 
@@ -134,9 +133,6 @@ class UserViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         serializer.save(role=request.user.role, partial=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
-
-    def partial_update(self, request, *args, **kwargs):
-        return super().partial_update(request, *args, **kwargs)
 
     def update(self, request, *args, **kwargs):
         if request.method == 'PUT':

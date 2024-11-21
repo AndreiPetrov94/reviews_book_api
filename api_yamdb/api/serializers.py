@@ -43,20 +43,23 @@ class BaseUserSerializer(serializers.Serializer):
 
 class UserCreationSerializer(BaseUserSerializer):
     email = serializers.EmailField(
-        max_length=MAX_LENGTH_EMAILFIELD, required=True)
+        max_length=MAX_LENGTH_EMAILFIELD, required=True
+    )
 
     def validate(self, attrs):
-        if User.objects.filter(email=attrs.get('email')).exists():
-            user = User.objects.get(email=attrs.get('email'))
-            if user.username != attrs.get('username'):
-                raise serializers.ValidationError(
-                    {'email': 'Электронная почта уже используется'})
+        user_by_email = User.objects.filter(email=attrs.get('email')).first()
+        user_by_username = User.objects.filter(
+            username=attrs.get('username')).first()
 
-        if User.objects.filter(username=attrs.get('username')).exists():
-            user = User.objects.get(username=attrs.get('username'))
-            if user.email != attrs.get('email'):
-                raise serializers.ValidationError(
-                    {'username': 'Никнейм уже используется'})
+        if user_by_email and user_by_email.username != attrs.get('username'):
+            raise serializers.ValidationError(
+                {'email': 'Электронная почта уже используется'}
+            )
+
+        if user_by_username and user_by_username.email != attrs.get('email'):
+            raise serializers.ValidationError(
+                {'username': 'Никнейм уже используется'}
+            )
 
         return super().validate(attrs)
 
@@ -65,10 +68,9 @@ class UserCreationSerializer(BaseUserSerializer):
             email=validated_data['email'],
             username=validated_data['username']
         )
-        confirmation_code = default_token_generator.make_token(user)
+        confirmation_code = user.generate_confirmation_code()
         user.confirmation_code = confirmation_code
         user.save()
-        # Отправка письма с кодом подтверждения
         send_mail(
             f'Ваш код подтверждения {confirmation_code}',
             settings.DEFAULT_FROM_EMAIL,

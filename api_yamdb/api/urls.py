@@ -13,7 +13,6 @@ from api.views import (
 )
 
 
-app_name = 'api'
 router_v1 = DefaultRouter()
 router_v1.register(
     r'categories',
@@ -36,12 +35,12 @@ router_v1.register(
     basename='reviews'
 )
 router_v1.register(
-    r'titles/(?P<title_id>\d+)/reviews/(?P<review_id>\d+)/comments',
+    r'titles/(?P<title_id>\d+)/reviews/(?P<review_id>[\d]+)/comments',
     CommentViewSet,
     basename='comments'
 )
 router_v1.register(
-    r"users",
+    r'users',
     UserViewSet,
     basename='users'
 )

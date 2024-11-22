@@ -15,7 +15,6 @@ from reviews.constants import (
     MAX_LENGTH_EMAILFIELD,
     MAX_LENGTH_SLUGFIELD,
     MAX_LENGTH_TEXTFIELD,
-    MAX_LENGTH_CHARFIELD_CODE,
     MAX_LENGTH_CHARFIELD_NAME,
     MAX_LENGTH_CHARFIELD_ROLE,
     MIN_VALUE_SCORE,
@@ -70,13 +69,6 @@ class User(AbstractUser):
         default=USER,
         blank=True
     )
-    confirmation_code = models.CharField(
-        verbose_name='Код потверждения',
-        max_length=MAX_LENGTH_CHARFIELD_CODE,
-        blank=True,
-        null=True,
-        default='XXXX'
-    )
 
     @property
     def is_admin(self):
@@ -101,6 +93,9 @@ class User(AbstractUser):
                 name='username_is_not_me'
             )
         ]
+
+    def generate_confirmation_code(self):
+        return default_token_generator.make_token(self)
 
     def __str__(self):
         return self.username

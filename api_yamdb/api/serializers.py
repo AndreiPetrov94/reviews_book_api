@@ -22,12 +22,7 @@ class BaseUserSerializer(serializers.Serializer):
     )
 
     def validate_username(self, value):
-        if value.lower() == 'me':
-            raise serializers.ValidationError(
-                'Никнейм не может быть "me"'
-            )
-        validation_username(value)
-        return value
+        return validation_username(value)
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -41,47 +36,10 @@ class UserSerializer(serializers.ModelSerializer):
         )
 
 
-class UserCreationSerializer(BaseUserSerializer):
-    email = serializers.EmailField(
-        max_length=MAX_LENGTH_EMAILFIELD,
-        required=True
-    )
-
-    def validate(self, attrs):
-        user_by_email = User.objects.filter(email=attrs.get('email')).first()
-        user_by_username = User.objects.filter(
-            username=attrs.get('username')
-        ).first()
-
-        if user_by_email and user_by_email.username != attrs.get('username'):
-            raise serializers.ValidationError(
-                {'email': 'Электронная почта уже используется'}
-            )
-
-        if user_by_username and user_by_username.email != attrs.get('email'):
-            raise serializers.ValidationError(
-                {'username': 'Никнейм уже используется'}
-            )
-        return super().validate(attrs)
-
-    def create(self, validated_data):
-        user = User.objects.create(
-            email=validated_data['email'],
-            username=validated_data['username']
-        )
-        confirmation_code = user.generate_confirmation_code()
-        user.confirmation_code = confirmation_code
-        user.save()
-        send_mail(
-            f'Ваш код подтверждения {confirmation_code}',
-            settings.DEFAULT_FROM_EMAIL,
-            [validated_data['email']],
-            fail_silently=False
-        )
-        return user
-
-
 class UserEditSerializer(BaseUserSerializer, serializers.ModelSerializer):
+
+    def validate_username(self, value):
+        return validation_username(value)
 
     class Meta:
         model = User

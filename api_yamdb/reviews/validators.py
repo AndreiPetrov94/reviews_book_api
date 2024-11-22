@@ -8,4 +8,8 @@ def validation_username(value):
         raise ValidationError(
             'Недопустимые символы в никнейме'
         )
+    if value.lower() == 'me':
+        raise ValidationError(
+            'Никнейм не может быть "me"'
+        )
     return value

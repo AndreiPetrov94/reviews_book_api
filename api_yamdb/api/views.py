@@ -25,7 +25,6 @@ from api.serializers import (
     TitleCreateSerializer,
     TitleReadSerializer,
     TokenSerializer,
-    UserCreationSerializer,
     UserEditSerializer,
     UserSerializer,
     SignupSerializer
@@ -34,7 +33,9 @@ from reviews.models import Category, Genre, Title, Review, User
 
 
 class TitleViewSet(viewsets.ModelViewSet):
-    queryset = Title.objects.annotate(rating=Avg('reviews__score'))
+    queryset = Title.objects.annotate(
+        rating=Avg('reviews__score')
+    ).order_by('name')
     permission_classes = (IsAdminUserOrReadOnly,)
     pagination_class = PageNumberPagination
     filter_backends = (DjangoFilterBackend,)
@@ -116,7 +117,7 @@ class UserViewSet(viewsets.ModelViewSet):
     lookup_field = 'username'
 
     @action(
-        methods=('patch', 'get'),
+        methods=('get', 'patch'),
         detail=False,
         permission_classes=(IsAuthenticated,)
     )
@@ -139,7 +140,7 @@ class UserViewSet(viewsets.ModelViewSet):
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def signup(request):
-    serializer = UserCreationSerializer(data=request.data)
+    serializer = SignupSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
     serializer.save()
     return Response(serializer.data, status=status.HTTP_200_OK)

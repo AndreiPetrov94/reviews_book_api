@@ -22,12 +22,7 @@ class BaseUserSerializer(serializers.Serializer):
     )
 
     def validate_username(self, value):
-        if value.lower() == 'me':
-            raise serializers.ValidationError(
-                'Никнейм не может быть "me"'
-            )
-        validation_username(value)
-        return value
+        return validation_username(value)
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -41,47 +36,50 @@ class UserSerializer(serializers.ModelSerializer):
         )
 
 
-class UserCreationSerializer(BaseUserSerializer):
-    email = serializers.EmailField(
-        max_length=MAX_LENGTH_EMAILFIELD,
-        required=True
-    )
+# class UserCreationSerializer(BaseUserSerializer):
+#     email = serializers.EmailField(
+#         max_length=MAX_LENGTH_EMAILFIELD,
+#         required=True
+#     )
 
-    def validate(self, attrs):
-        user_by_email = User.objects.filter(email=attrs.get('email')).first()
-        user_by_username = User.objects.filter(
-            username=attrs.get('username')
-        ).first()
+#     def validate(self, attrs):
+#         user_by_email = User.objects.filter(email=attrs.get('email')).first()
+#         user_by_username = User.objects.filter(
+#             username=attrs.get('username')
+#         ).first()
 
-        if user_by_email and user_by_email.username != attrs.get('username'):
-            raise serializers.ValidationError(
-                {'email': 'Электронная почта уже используется'}
-            )
+#         if user_by_email and user_by_email.username != attrs.get('username'):
+#             raise serializers.ValidationError(
+#                 {'email': 'Электронная почта уже используется'}
+#             )
 
-        if user_by_username and user_by_username.email != attrs.get('email'):
-            raise serializers.ValidationError(
-                {'username': 'Никнейм уже используется'}
-            )
-        return super().validate(attrs)
+#         if user_by_username and user_by_username.email != attrs.get('email'):
+#             raise serializers.ValidationError(
+#                 {'username': 'Никнейм уже используется'}
+#             )
+#         return super().validate(attrs)
 
-    def create(self, validated_data):
-        user = User.objects.create(
-            email=validated_data['email'],
-            username=validated_data['username']
-        )
-        confirmation_code = user.generate_confirmation_code()
-        user.confirmation_code = confirmation_code
-        user.save()
-        send_mail(
-            f'Ваш код подтверждения {confirmation_code}',
-            settings.DEFAULT_FROM_EMAIL,
-            [validated_data['email']],
-            fail_silently=False
-        )
-        return user
+#     def create(self, validated_data):
+#         user = User.objects.create(
+#             email=validated_data['email'],
+#             username=validated_data['username']
+#         )
+#         confirmation_code = user.generate_confirmation_code()
+#         user.confirmation_code = confirmation_code
+#         user.save()
+#         send_mail(
+#             f'Ваш код подтверждения {confirmation_code}',
+#             settings.DEFAULT_FROM_EMAIL,
+#             [validated_data['email']],
+#             fail_silently=False
+#         )
+#         return user
 
 
 class UserEditSerializer(BaseUserSerializer, serializers.ModelSerializer):
+
+    def validate_username(self, value):
+        return validation_username(value)
 
     class Meta:
         model = User
@@ -98,19 +96,18 @@ class UserAccessTokenSerializer(serializers.Serializer):
     confirmation_code = serializers.CharField(required=True)
 
     def validate(self, data):
-        username = data.get('username')
-        confirmation_code = data.get('confirmation_code')
         user = get_object_or_404(
             User,
-            username=username
+            username=data['username']
         )
-        if user.confirmation_code != confirmation_code:
-            return Response(
-                {'Неверный код подтверждения'},
-                status=status.HTTP_400_BAD_REQUEST
+        if not default_token_generator.check_token(
+            user,
+            data['confirmation_code']
+        ):
+            raise serializers.ValidationError(
+                {'Неверный код подтверждения'}
             )
-        token = AccessToken.for_user(user)
-        return Response({'token': str(token)}, status=status.HTTP_201_CREATED)
+        return data
 
 
 class SignupSerializer(BaseUserSerializer):

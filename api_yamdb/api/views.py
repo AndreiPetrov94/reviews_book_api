@@ -25,7 +25,7 @@ from api.serializers import (
     TitleCreateSerializer,
     TitleReadSerializer,
     TokenSerializer,
-    UserCreationSerializer,
+    # UserCreationSerializer,
     UserEditSerializer,
     UserSerializer,
     SignupSerializer
@@ -141,7 +141,7 @@ class UserViewSet(viewsets.ModelViewSet):
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def signup(request):
-    serializer = UserCreationSerializer(data=request.data)
+    serializer = SignupSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
     serializer.save()
     return Response(serializer.data, status=status.HTTP_200_OK)
